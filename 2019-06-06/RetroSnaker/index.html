@@ -1,0 +1,270 @@
+<html>
+	<head>
+		<title>贪吃蛇</title>
+		<meta charset="utf-8">
+		<style>
+			body,div{
+				margin:0;
+				padding:0;
+			}
+			.div{
+			    position:absolute;
+			}
+		</style>
+		<script type="text/javascript">
+		window.onload=function (){
+			var game={
+				rows:40,//行数
+				cols:40,//列数
+				w:15,//宽
+				h:15,//高
+				aMaps:[],//表示层地图数组
+				map:[],//声明内部计算数组
+				speed:null,//用于存储原始速度
+				speeding:180,//运动速度
+				direction:6,//蛇运动的方向 规定 2为下 4为左 6为右 8为上 默认向右运动
+				aSnake:[],//存储蛇的位置信息
+				Run:false,//游戏运行状态 默认为关闭
+				lastI:null,//存储最后一次运行的i
+				lastJ:null,//存储最后一次运行的j
+				isDown:false,//用于判断键盘空格键是否按下及防止重复事件
+				startBtn:null,
+				init:function (){//初始化游戏场景
+					var rows=this.rows;//行数
+					var cols=this.cols;//列数
+					var w=this.w;//宽
+					var h=this.h;//高
+					//创建游戏外部边界及操作区域
+					var wt=document.write;
+					var gId=document.getElementById;
+					wt('<div style="position:relative;top:20px;left:280px;border:1px solid blue;width:'+(w*rows+100)+'px;height:'+(h*cols)+'px;" >');
+					wt('<div id="gameView" style="position:relative;top:0;left:0; border-right:1px solid blue;width:'+(w*rows)+'px;height:'+(h*cols)+'px;" >');
+					wt('</div>');
+					wt('<div style="position:absolute;top:200px;right:10px;">得分：<div id="score" style="width:inherit;height:50px;line-height:50px;font-size:18px;font-weight:bold;text-align:center;">0</div><input type="button" id="startBtn" style="width:80px;" value="开始游戏"/><br/><br/><label>级别：<select style="width:30px;" id="level" /><option value=1>1</option><option value=2>2</option><option value=3>3</option><option value=4>4</option><option value=5>5</option></select></label><br/><br/><input type="button" style="width:80px;" id="overGame" value="结束游戏"/></div>');
+					wt('</div>');
+					this.cView(w,h);//构建游戏场景
+					document.onkeydown=this.keyDown;//为键盘监听事件
+					document.onkeyup=this.keyUp;//为键盘监听事件
+					//事件监听
+					this.startBtn=gId('startBtn');
+					this.startBtn.onclick=this.start;
+					gId('overGame').onclick=this.overGame;
+					var level = gId('level');
+					level.onchange=function(){//等级
+							var speed = level.value;
+							if(speed==1){
+								game.speeding=180;
+							} else if (speed==2){
+								game.speeding=150;
+							}else if (speed==3){
+								game.speeding=120;
+							}else if (speed==4){
+								game.speeding=90;
+							}else if (speed==5){
+								game.speeding=60;
+							}
+							level.blur();
+					};
+				},
+				cPlayer:function (){//创建蛇的方法
+					this.map[0][0]=-1;//改变内部运算数组
+					this.aSnake[0]={key:0,color:'green'};//存储内部数组以i*game.rows+j计算
+					this.aMaps[0].style.backgroundColor=this.aSnake[0].color;
+				},
+				cFood:function(){//创建食物的方法
+					var rows=this.rows;//行数
+					var cols=this.cols;//列数
+					var i = Math.floor(Math.random()*rows);//随机行
+					var j = Math.floor(Math.random()*cols);//随机列
+					var color =this.rdColor();//随机颜色
+					if(this.map[i][j]!==0){ //判断食物出现的位置是否是空的如果是就出现如果不是就再随机一次
+						this.cFood();
+					}else{
+						this.map[i][j]=1;//给出现食物的位置对应的数组赋值
+						this.aMaps[(i*this.rows+j)].style.backgroundColor=color;//改变食物出现位置的背景
+						//console.log('食物出现在第'+i+'行第'+j+'列:'+this.map[i][j]+'颜色值为：'+color);
+					}
+				},
+				rdColor:function (){//创建随机颜色的方法(由于背景颜色为白色因此颜色取值范围缩小到0-220防止出现浅色)
+					return 'rgb('+Math.floor(Math.random()*220)+
+								','+Math.floor(Math.random()*220)+
+								','+Math.floor(Math.random()*220)+')';
+				},
+				startGame:function(){//开始游戏
+					this.Run=true;//改变游戏运行状态
+					this.aMaps=document.getElementsByName('div');//给表示层地图数组赋值;
+					this.cPlayer();//创建蛇
+					this.cFood();//创建食物
+					var fn = function(){
+						return game.movePlayer(0,0);//为蛇启动运动事件
+					}
+					setTimeout(fn,game.speeding);//解决方法直接执行导致蛇初始位置部是0,0的问题
+					var otps=document.getElementById('tps');
+					otps.style.display='none';
+				},
+				overGame:function(){//結束游戏
+					if(confirm('您真的要退出嘛？')){
+						var userAgent = navigator.userAgent;//解决新版谷歌及火狐浏览器下不能关闭非js创建窗口的问题
+						if (userAgent.indexOf("Firefox") != -1 || userAgent.indexOf("Chrome") !=-1) {
+							window.location.href="about:blank";
+						} else {
+							window.opener = null;
+							window.open("", "_self");
+							window.close();
+						}
+					}
+				},
+				movePlayer:function (i,j){//蛇移动事件
+						//根据方向移动
+						if(game.direction===2){//下
+							i++;
+						}else if (game.direction===4){//左
+							j--;
+						}else if (game.direction===6){//右
+							j++;
+						}else if(game.direction===8){//上
+							i--;
+						}
+						//解决当蛇头靠近边界时暂停继续出现错误的为题
+						this.lastI=i<0?0:i;
+						this.lastJ=j<0?0:j;
+						var isWin=this.isWin(i,j);
+						var x=i;
+						var y=j;
+						if(isWin.code==1){ //判断胜负
+							if(this.map[i][j]==1){//判断是否吃到食物
+								//计算位置信息
+								var color = game.aMaps[i*game.rows+j].style.backgroundColor;//获取食物颜色
+								game.aSnake.splice(1,0,{key:(i*game.rows+j),color:color});//添加蛇身
+								document.getElementById('score').innerHTML=(2*(this.aSnake.length-1));//计算分数
+								game.cFood();//创建食物
+							}
+							this.aMaps[game.aSnake[(game.aSnake.length-1)].key].style.backgroundColor='';//清除移动后最后一个位置颜色
+							x = Math.floor(game.aSnake[game.aSnake.length-1].key/game.rows);
+							y = game.aSnake[game.aSnake.length-1].key%game.rows;
+							this.map[x][y]=0;
+							//根据数组显示蛇身位置、长度及其颜色
+							for(var pro=(game.aSnake.length-1);pro>=0;pro--){
+								if(pro==0){
+									game.aSnake[pro]={key:(i*game.rows+j),color:game.aSnake[pro].color};//运动即改变存储的值颜色不变
+								}else{
+									game.aSnake[pro]={key:(game.aSnake[pro-1].key),color:game.aSnake[pro].color};
+								}
+								//计算运动后的位置
+								x = Math.floor(game.aSnake[pro].key/game.rows);
+								y = game.aSnake[pro].key%game.rows;
+								this.map[x][y]=-1;
+								this.aMaps[game.aSnake[pro].key].style.backgroundColor=game.aSnake[pro].color;
+							}
+							if(this.Run){
+							var fn = function(){
+								return game.movePlayer(i,j);
+							}
+							setTimeout(fn,game.speeding);//调用自身
+							}
+						}else{
+							this.showTps(isWin.tps);
+							var startBtn = document.getElementById('startBtn');
+							startBtn.value='再玩一次';
+						}
+				},
+				isWin:function(i,j,win){//判断胜负的方法
+					if(win){//如果win存在则表示玩家胜利了蛇已经达到了最长
+						this.Run=false;
+						return {code:1,tps:'太棒了！您的威名将传遍大江南北！'};
+					}
+					if(i<0||j<0||i>=this.rows||j>=this.cols){//判断是否撞到边界
+						this.Run=false;
+						return {code:0,tps:'很遗憾，您撞到了边界！游戏结束！'};
+					}else{
+						if(this.map[i][j]===-1){//判断是否撞到自身
+							this.Run=false;
+							return {code:0,tps:'很遗憾，您撞到了自己！游戏结束！'};
+						}else{//空位或者食物什么都不做
+							return {code:1};
+						}
+					}
+				},
+				showTps:function(tps){//显示提示信息
+					var otps=document.getElementById('tps');
+					otps.style.display='block';
+					otps.innerHTML=tps;
+				},
+				cView:function(w,h){//构建游戏运行场景
+					//重置数组
+					this.map=[];
+					this.aMaps=[];
+					this.aSnake=[];
+					//重置方向
+					this.direction=6;
+					var view = document.getElementById('gameView');
+					var innerHTML='';
+					for(var i=0;i<this.rows;i++){
+						for(var j=0;j<this.cols;j++){
+							innerHTML+='<div name="div" style="top:'+(h*i)+'px;left:'+(w*j)+'px;width:'+w+'px;height:'+h+'px;overflow:hidden;"></div>';
+						}
+					}
+					innerHTML+='<div id="tps" style="width:300px;background:#ccc;line-height:50px;text-align:center;position:absolute;top:50%;left:50%;margin-left:-150px;margin-top:-25px;">欢迎来到贪吃蛇小游戏<br>游戏方向控制 W S A D 或者方向键<br>空格键加速 </div>';//提示窗口
+					view.innerHTML=innerHTML;
+					for(var i=0;i<this.rows;i++){
+						this.map[i]=[];//内部计算数组map中声明数组创建二维数组
+						for(var j=0;j<this.cols;j++){
+							this.map[i][j]=0;//为二维数组中的每个元素设置默认值为0
+						}
+					}
+				},
+				keyDown:function(e){//键盘监听
+					var e=e||event;
+					var currKey=e.keyCode||e.which||e.charCode;//兼容
+					//console.log(currKey);
+					if(currKey==87||currKey==38&&game.direction!=2){
+						game.direction=8;//改变方向为上
+					}else if((currKey==83||currKey==40)&&game.direction!=8){
+						game.direction=2;//改变方向为下
+					}else if((currKey==65||currKey==37)&&game.direction!=6){
+						game.direction=4;//改变方向为左
+					}else if((currKey==68||currKey==39)&&game.direction!=4){
+						game.direction=6;//改变方向为右
+					}
+					if(currKey==32&&!game.isDown){//按下空格键加速
+						game.isDown=true;
+						game.speed=game.speeding;
+						game.speeding=game.speeding-game.speeding/2;
+						console.log('down:'+game.speed);
+					}
+				},
+				keyUp:function(e){//键盘监听
+					var e=e||event;
+					var currKey=e.keyCode||e.which||e.charCode;//兼容
+					if(currKey==32){//抬起空格键变回原速度
+						game.isDown=false;
+						game.speeding=game.speed;
+						console.log('up:'+game.speed);
+					}
+				},
+				start:function(){
+					if(game.startBtn.value==='开始游戏'){
+						game.startGame();
+						game.startBtn.value='暂停'
+					}else if(game.startBtn.value==='再玩一次'){
+						game.cView(game.w,game.h);
+						game.startGame();
+						game.startBtn.value='暂停';
+					}else if(game.startBtn.value==='暂停'){
+						game.Run=false;
+						game.startBtn.value='继续';
+					}else if(game.startBtn.value==='继续'){
+						game.Run=true;
+						game.movePlayer(game.lastI,game.lastJ,game.speed,game.direction);
+						game.startBtn.value='暂停';
+					}
+					game.startBtn.blur();
+				}
+			}//end game
+			game.init();//初始化游戏场景
+		}
+		</script>
+	</head>
+	<body>
+	</body>
+</html>
